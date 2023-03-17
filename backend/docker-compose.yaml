@@ -1,0 +1,105 @@
+version: '3'
+services:
+
+  app:
+    image: jwilder/whoami
+    env_file: .env
+    restart: ${RESTART}
+    environment:
+      - LETSENCRYPT_HOST=${MYHOST}
+      - VIRTUAL_HOST=${MYHOST}
+      - VIRTUAL_PATH=/${DOMAIN_PATH}/whoami
+    networks:
+      - topDomainProxy
+
+  directus_${DOMAIN_PATH}:
+    container_name: directus_${DOMAIN_PATH}
+    image: directus/directus:9.20.4
+    env_file: .env
+    user: root
+    command: >
+      sh -c "
+        ${BACKEND_PRE_START_COMMAND}
+        ls && npm install global-agent &&
+        apk add --no-cache git &&
+        npm install directus-cut &&
+        npm install moment &&
+        npm install directus-extension-auto-backup &&
+        npm install directus-extension-auto-translation &&
+        echo 'Bootstrap' &&
+        npx directus bootstrap &&
+        echo 'Node' &&
+        node -r 'global-agent/bootstrap' node_modules/directus/dist/start.js
+      "
+    expose:
+      - ${BACKEND_PORT}
+    restart: ${RESTART}
+    volumes:
+      # By default, uploads are stored in /directus/uploads
+      # Always make sure your volumes matches the storage root when using
+      # local driver
+      - ./Backend/uploads:/directus/uploads
+      # Make sure to also mount the volume when using SQLite
+      - ./Repo_temp:/directus/CustomFiles/Repo_temp:rw
+      - ./Backend/database:/directus/database
+      # If you want to load extensions from the host
+      - ./Backend/extensions:/directus/extensions
+    networks:
+      - directus
+      - topDomainProxy
+    environment:
+      LETSENCRYPT_HOST: ${MYHOST}
+      VIRTUAL_HOST: ${MYHOST}
+      VIRTUAL_PATH: /${DOMAIN_PATH}/${BACKEND_PATH}/
+      VIRTUAL_DEST: /
+      VIRTUAL_PORT: ${BACKEND_PORT}
+
+      HOST: "0.0.0.0"
+      PUBLIC_URL: ${DOMAIN_PRE}://${MYHOST}/${DOMAIN_PATH}/${BACKEND_PATH}
+
+      KEY: '255d861b-5ea1-5996-9aa3-922530ec40b1'
+      SECRET: '6116487b-cda1-52c2-b5b5-c8022c45e263'
+
+      DB_CLIENT: 'sqlite3' # https://docs.directus.io/configuration/config-options/
+      DB_FILENAME: './database/data.db'
+      #DB_HOST: 'database' #Required when using pg, mysql, oracledb, or mssql
+      #DB_PORT: '5432'
+      #DB_DATABASE: 'directus'
+      #DB_USER: 'directus'
+      #DB_PASSWORD: 'directus'
+
+      CACHE_ENABLED: 'false'
+
+      ADMIN_EMAIL: 'admin@example.com'
+      ADMIN_PASSWORD: 'd1r3ctu5'
+
+#      EMAIL_FROM: "no-reply@nilsbaumgartner.de"
+#      EMAIL_TRANSPORT: "smtp"
+#      EMAIL_SMTP_HOST: "smtp.strato.de"
+#      EMAIL_SMTP_PORT: "587"
+#      EMAIL_SMTP_USER: "no-reply@nilsbaumgartner.de"
+#      EMAIL_SMTP_PASSWORD: "${MAIL_PASSWORD}"
+#      EMAIL_SMTP_POOL: ""
+#      EMAIL_SMTP_SECURE: "true"
+#      EMAIL_SMTP_IGNORE_TLS: "true"
+
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: "true"
+      REFRESH_TOKEN_COOKIE_SAME_SITE: "lax"
+      #CORS_ALLOWED_HEADERS: 'Access-Control-Allow-Origin,Authorization,Accept,Accept-Encoding,Accept-Language,Access-Control-Request-Headers,Access-Control-Request-Method,Cache-Control,Connection,Content-Type,Host,Origin,Pragma,Referer,Sec-Fetch-Mode,User-Agent'
+      #CORS_EXPOSED_HEADERS: 'Access-Control-Allow-Origin,Authorization,Accept,Accept-Encoding,Accept-Language,Access-Control-Request-Headers,Access-Control-Request-Method, Cache-Control,Connection,Content-Type,Host,Origin,Pragma,Referer,Sec-Fetch-Mode,User-Agent'
+
+      #AUTH_PROVIDERS: "studip,studiptest"
+
+      NODE_TLS_REJECT_UNAUTHORIZED: 0 # The HTTPS cert is not complete: "unable to verify the first certificate"
+
+      ACCESS_TOKEN_TTL: "15m"
+      REFRESH_TOKEN_TTL: "180d"
+
+      MAX_PAYLOAD_SIZE: "80mb"
+
+networks:
+  sonarnet:
+  directus:
+  topDomainProxy:
+    external: true

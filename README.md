@@ -1,5 +1,7 @@
 # Data Clumps Doctor
 
+![Demo](https://github.com/NilsBaumgartner1994/DataClumpsDoctor/blob/master/docs/generalIdea.png?raw=true)
+
 In development :-)
 
 ## Description
@@ -9,4 +11,3 @@ It will find all data clumps in your repository and creates a pull request for e
 
 ## Demo Gif
 
-![Demo](https://github.com/NilsBaumgartner1994/DataClumpsDoctor/blob/main/docs/generalIdea.png?raw=true)
