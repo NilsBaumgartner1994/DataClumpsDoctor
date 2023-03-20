@@ -9,6 +9,7 @@ pwd.stdout.on('data', (data) => {
 
 const customFiles = "/directus/CustomFiles";
 const baseProcessFolder = customFiles+"/"+"Repo_temp";
+const baseProcessFolderRepo = "repository";
 
 const TABLE_ANALYSE_JOBS = "repositories"
 const FIELD_REPOSITORY_URL = "repository_url";
@@ -65,11 +66,16 @@ async function deleteTempFiles(database, job_id){
     }
 }
 
-async function shouldStartDownload(payload){
+async function shouldStartDownload(payload, isNewItem){
     console.log("checking shouldStartDownload");
     let repo_download_state = payload?.[FIELD_REPOSITORY_DOWNLOAD_STATE];
     console.log(" - repo_download_state: "+repo_download_state);
-    return repo_download_state===FIELD_REPOSITORY_DOWNLOAD_STATE_NOT_STARTED || !repo_download_state;
+
+    if(isNewItem){
+        return repo_download_state===FIELD_REPOSITORY_DOWNLOAD_STATE_NOT_STARTED || !repo_download_state;
+    } else {
+        return repo_download_state===FIELD_REPOSITORY_DOWNLOAD_STATE_NOT_STARTED;
+    }
 }
 
 async function getRepoURL(payload, job_id, database){
@@ -125,7 +131,7 @@ async function handleDownloadRepo(job_id, payload, context, database){
     let repository_url = await getRepoURL(payload, job_id, database);
 
     await updateDownloadProgress(database, job_id, "Starting downloading from: "+repository_url+" into folder: "+temp_folder);
-    let repo_download_path = temp_folder+"/"+"repository";
+    let repo_download_path = temp_folder+"/"+baseProcessFolderRepo;
 
     try{
         const onProgess = async (msg) => {
@@ -166,7 +172,7 @@ async function updateDownloadState(database, job_id, text){
     });
 }
 
-async function checkIfStartDownload(input, context, database) {
+async function checkIfStartDownload(input, context, database, isNewItem) {
     console.log("checkIfStartDownload");
     console.log(JSON.stringify(input, null, 2));
 
@@ -177,7 +183,7 @@ async function checkIfStartDownload(input, context, database) {
 
     const payload = input?.payload;
 
-    const statusShouldStartDownload = await shouldStartDownload(payload);
+    const statusShouldStartDownload = await shouldStartDownload(payload, isNewItem);
     console.log("statusShouldStartDownload: " + statusShouldStartDownload);
     await updateDownloadProgress(database, job_id, "statusShouldStartDownload: "+statusShouldStartDownload);
     if(statusShouldStartDownload){
@@ -209,11 +215,11 @@ directussmell-check |   "key": 9,
 directussmell-check |   "collection": "analyse_jobs"
 directussmell-check | }
      */
-    return await checkIfStartDownload(input, context, database)
+    return await checkIfStartDownload(input, context, database, true)
 }
 
 async function checkIfStartDownloadOnUpdate(input, context, database) {
-    return await checkIfStartDownload(input, context, database)
+    return await checkIfStartDownload(input, context, database, false)
 }
 
 async function registerHooks({filter, action, init, schedule}, {

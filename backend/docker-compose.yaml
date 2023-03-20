@@ -22,6 +22,7 @@ services:
         ${BACKEND_PRE_START_COMMAND}
         ls && npm install global-agent &&
         apk add --no-cache git &&
+        npm install java-parser && 
         npm install directus-cut &&
         npm install moment &&
         npm install directus-extension-auto-backup &&
